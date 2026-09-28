@@ -1,0 +1,227 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String        @id @default(uuid())
+  email        String        @unique
+  password     String
+  role         Role          @default(CUSTOMER)
+  name         String
+  phone        String
+  address      String?
+  avatarUrl    String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  applications Application[]
+  merchant     Merchant?
+  orders       Order[]
+  reports      Report[]
+  reviews      Review[]
+
+  @@map("users")
+}
+
+model Merchant {
+  id                  String    @id @default(uuid())
+  name                String
+  rating              Float     @default(0)
+  address             String
+  openTime            String
+  closeTime           String
+  businessPhone       String
+  businessEmail       String
+  businessDescription String
+  bankName            BankType
+  bankAccount         String
+  bankHolder          String
+  logoUrl             String?
+  bannerUrl           String?
+  userId              String    @unique
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders              Order[]
+  reviews             Review[]
+  services            Service[]
+
+  @@map("merchants")
+}
+
+model Service {
+  id          String      @id @default(uuid())
+  name        String
+  price       Int
+  unit        UnitType
+  description String
+  isAvailable Boolean     @default(true)
+  merchantId  String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  orderItems  OrderItem[]
+  merchant    Merchant    @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  @@map("services")
+}
+
+model Order {
+  id             String          @id @default(uuid())
+  total          Int
+  status         OrderStatus     @default(CREATED)
+  estimationTime String          @default("Pending")
+  fulfillment    FulfillmentType @default(DELIVERY)
+  notes          String?
+  customerId     String
+  merchantId     String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  items          OrderItem[]
+  customer       User            @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  merchant       Merchant        @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  payment        Payment?
+  report         Report?
+  review         Review?
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(uuid())
+  name      String
+  quantity  Int
+  price     Int
+  orderId   String
+  serviceId String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+model Payment {
+  id              String        @id @default(uuid())
+  snapToken       String?
+  snapRedirectUrl String?
+  transactionId   String?       @unique
+  status          PaymentStatus @default(PENDING)
+  amount          Int
+  paidAt          DateTime?
+  expiredAt       DateTime?
+  orderId         String        @unique
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+model Application {
+  id                  String            @id @default(uuid())
+  businessName        String
+  businessOwner       String
+  status              ApplicationStatus @default(PENDING)
+  businessPhone       String
+  businessEmail       String
+  businessAddress     String
+  businessDescription String
+  openTime            String
+  closeTime           String
+  bankType            BankType
+  bankAccount         String
+  bankHolder          String
+  documentUrl         String
+  userId              String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  user                User?             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("applications")
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  rating     Int
+  comment    String
+  orderId    String   @unique
+  merchantId String
+  userId     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@map("reviews")
+}
+
+model Report {
+  id        String       @id @default(uuid())
+  issue     String
+  status    ReportStatus @default(OPEN)
+  orderId   String       @unique
+  userId    String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  order     Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user      User?        @relation(fields: [userId], references: [id])
+
+  @@map("reports")
+}
+
+enum Role {
+  CUSTOMER
+  MERCHANT
+  ADMIN
+}
+
+enum BankType {
+  BCA
+  BRI
+  MANDIRI
+  BNI
+  DANAMON
+  CIMB
+  OCBC
+}
+
+enum UnitType {
+  KG
+  PIECE
+}
+
+enum OrderStatus {
+  CREATED
+  PROCESSING
+  FINISHED
+  COMPLETED
+  FAILED
+}
+
+enum FulfillmentType {
+  DELIVERY
+  PICKUP
+}
+
+enum ApplicationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+  CANCELLED
+}
